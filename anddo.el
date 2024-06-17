@@ -32,8 +32,9 @@ Possible values are `new', `all' and `most'.")
      (modification-time text))))
 
 (defun anddo--create-tables ()
-  (sqorm-open (expand-file-name "anddo.sqlite3" user-emacs-directory))
-  (sqorm-create-tables anddo--tables))
+  (unless sqorm-db
+    (sqorm-open (expand-file-name "anddo.sqlite3" user-emacs-directory))
+    (sqorm-create-tables anddo--tables)))
 
 (defun anddo-import-text-file (file)
   "Import a text file into anddo.
@@ -86,9 +87,12 @@ New:
   (pop-to-buffer "*anddo*")
   (let ((inhibit-read-only t))
     (erase-buffer)
+    (anddo--create-tables)
     (anddo-mode)
     (make-vtable
-     :columns '("More" "Status" "Item")
+     :columns '((:name "More" :width 4)
+		(:name "Status" :width 4)
+		(:name "Item" :width 500))
      :objects (sort
 	       (sqorm-select-where
 		(format
@@ -108,9 +112,12 @@ New:
 	 ("More" (if (length= (plist-get item :body) 0)
 		     ""
 		   "⬇️"))
-	 ("Status" (if (equal (plist-get item :status) "new")
-		       ""
-		     (plist-get item :status)))
+	 ("Status" (pcase (plist-get item :status)
+		     ("new" "⚡")
+		     ("in-progress" "🛠️")
+		     ("possibly" "❓")
+		     ("not-doing" "⛔")
+		     ("done" "☑️")))
 	 ("Item" (plist-get item :subject))))
      :keymap anddo-mode-map)))
 
