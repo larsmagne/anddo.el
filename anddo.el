@@ -26,7 +26,10 @@ Possible values are `new', `all' and `most'.")
     ("in-progress" "🛠️")
     ("possibly" "❓")
     ("not-doing" "⛔")
-    ("done" "☑️")))
+    ("done" "☑️"))
+  "Alist of possible statuses and how they should be displayed.
+The order is significant -- the todo items will be listed in the
+same order.")
 
 (defvar anddo--db nil)
 
