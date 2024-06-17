@@ -104,7 +104,7 @@ New:
     (make-vtable
      :columns '((:name "More" :width 4)
 		(:name "Status" :width 4)
-		(:name "Item" :width 500))
+		(:name "Item" :width 80))
      :objects (sort
 	       (anddo--transform-result
 		(sqlite-select
