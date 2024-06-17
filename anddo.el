@@ -21,6 +21,9 @@
   "Default listing mode for anddo.
 Possible values are `new', `all' and `most'.")
 
+(defvar anddo-statuses '("new" "done" "in-progress"
+			 "possibly" "not-doing"))
+
 (defvar anddo--db nil)
 
 (defun anddo--create-tables ()
@@ -129,11 +132,7 @@ New:
 		     ("possibly" "❓")
 		     ("not-doing" "⛔")
 		     ("done" "☑️")))
-	 ("Item" (plist-get item :subject))))
-     :keymap anddo-mode-map)))
-
-(defvar anddo-statuses '("new" "done" "in-progress"
-			 "possibly" "not-doing"))
+	 ("Item" (plist-get item :subject)))))))
 
 (defvar-keymap anddo-mode-map
   "n" #'anddo-new-item
