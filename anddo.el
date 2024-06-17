@@ -30,6 +30,17 @@ Possible values are `new', `all' and `most'.")
 
 (defvar anddo--db nil)
 
+(defun anddo ()
+  "Display the todo list."
+  (interactive)
+  (pop-to-buffer "*anddo*")
+  (when anddo--db
+    (sqlite-close anddo--db)
+    (setq-local anddo--db nil))
+  (anddo-mode)
+  (anddo--create-tables)
+  (anddo--generate))
+
 (defun anddo--create-tables ()
   (unless anddo--db
     (setq-local anddo--db
@@ -77,6 +88,7 @@ New:
 		(assoc (plist-get item :status) anddo-statuses)))
 
 (defun anddo--transform-result (result)
+  "Make sqlite results into plists."
   (cl-loop with columns = (pop result)
 	   for row in result
 	   collect
@@ -85,17 +97,6 @@ New:
 		    append (list (intern (format ":%s" (replace-regexp-in-string
 							"_" "-" column)))
 				 value))))
-
-(defun anddo ()
-  "Display the todo list."
-  (interactive)
-  (pop-to-buffer "*anddo*")
-  (let ((db anddo--db))
-    (anddo-mode)
-    (when db
-      (setq-local anddo-db db))
-    (anddo--create-tables)
-    (anddo--generate)))
 
 (defun anddo--generate ()
   (let ((inhibit-read-only t))
