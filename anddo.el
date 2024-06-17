@@ -16,6 +16,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'vtable)
 
 (defvar anddo-listing-mode 'new
   "Default listing mode for anddo.
