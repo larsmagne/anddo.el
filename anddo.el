@@ -21,8 +21,12 @@
   "Default listing mode for anddo.
 Possible values are `new', `all' and `most'.")
 
-(defvar anddo-statuses '("new" "done" "in-progress"
-			 "possibly" "not-doing"))
+(defvar anddo-statuses
+  '(("new" "⚡")
+    ("in-progress" "🛠️")
+    ("possibly" "❓")
+    ("not-doing" "⛔")
+    ("done" "☑️")))
 
 (defvar anddo--db nil)
 
@@ -69,12 +73,8 @@ New:
 	(forward-line 1)))))
 
 (defun anddo--rank (item)
-  (pcase (plist-get item :status)
-    ("new" 1)
-    ("in-progress" 2)
-    ("possibly" 3)
-    ("not-doing" 4)
-    ("done" 5)))
+  (seq-position anddo-statuses
+		(assoc (plist-get item :status) anddo-statuses)))
 
 (defun anddo--transform-result (result)
   (cl-loop with columns = (pop result)
@@ -126,12 +126,7 @@ New:
 	 ("More" (if (length= (plist-get item :body) 0)
 		     ""
 		   "⬇️"))
-	 ("Status" (pcase (plist-get item :status)
-		     ("new" "⚡")
-		     ("in-progress" "🛠️")
-		     ("possibly" "❓")
-		     ("not-doing" "⛔")
-		     ("done" "☑️")))
+	 ("Status" (cadr (assoc (plist-get item :status) anddo-statuses)))
 	 ("Item" (plist-get item :subject)))))))
 
 (defvar-keymap anddo-mode-map
