@@ -1,0 +1,7 @@
+This is a very simple todo package for Emacs.
+
+It requires Emacs 29 (or newer) with sqlite support.  It also requires
+this package:
+
+  https://github.com/larsmagne/sqorm.el/
+
