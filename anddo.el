@@ -132,10 +132,11 @@ New:
   "<RET>" #'anddo-show-body
   "<DEL>" #'anddo-delete-item
   :menu
-  '(["Add new todo item" anddo-new-item t]
+  '("Anddo"
+    ["Add new todo item" anddo-new-item]
     ["Edit todo item" anddo-edit-item (vtable-current-object)]
     ["Change status" anddo-change-status (vtable-current-object)]
-    ["Toggle listing mode" anddo-toggle-listing-mode t]
+    ["Toggle listing mode" anddo-toggle-listing-mode]
     ["Show the body of the item" anddo-show-body (vtable-current-object)]
     ["Delete todo item" anddo-delete-item (vtable-current-object)]))
 
@@ -146,7 +147,7 @@ New:
 
 (defun anddo-toggle-listing-mode ()
   "Cycle through three listing modes: New-only, non-closed, all."
-  (interactive)
+  (interactive nil anddo-mode)
   (setq anddo-listing-mode
 	(cl-case anddo-listing-mode
 	  (new 'more)
@@ -165,7 +166,7 @@ New:
 
 (defun anddo-show-body ()
   "Display the body of an item, if any."
-  (interactive)
+  (interactive nil anddo-mode)
   (let ((body (plist-get (vtable-current-object) :body)))
     (if (zerop (length body))
 	(user-error "No body for the current item")
@@ -173,7 +174,7 @@ New:
 
 (defun anddo-new-item ()
   "Add a new todo item."
-  (interactive)
+  (interactive nil anddo-mode)
   (let ((lines (string-lines
 		(string-trim
 		 (read-string-from-buffer "Enter a todo item" "")))))
@@ -187,7 +188,7 @@ New:
 
 (defun anddo-edit-item ()
   "Edit the item under point."
-  (interactive)
+  (interactive nil anddo-mode)
   (let ((item (vtable-current-object)))
     (unless item
       (user-error "No item under point"))
@@ -209,7 +210,7 @@ New:
 
 (defun anddo-delete-item ()
   "Delete the item under point."
-  (interactive)
+  (interactive nil anddo-mode)
   (let ((item (vtable-current-object)))
     (unless item
       (user-error "No item under point"))
@@ -220,7 +221,7 @@ New:
 
 (defun anddo-change-status ()
   "Change the status of the item under point."
-  (interactive)
+  (interactive nil anddo-mode)
   (let ((item (vtable-current-object)))
     (unless item
       (user-error "No item under point"))
