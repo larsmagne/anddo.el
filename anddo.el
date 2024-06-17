@@ -22,11 +22,11 @@
 Possible values are `new', `all' and `most'.")
 
 (defvar anddo-statuses
-  '(("new" "⚡")
-    ("in-progress" "🛠️")
-    ("possibly" "❓")
-    ("not-doing" "⛔")
-    ("done" "☑️"))
+  '(("new" "⚡" t)
+    ("in-progress" "🛠️" t)
+    ("possibly" "❓" nil)
+    ("not-doing" "⛔" nil)
+    ("done" "☑️" t))
   "Alist of possible statuses and how they should be displayed.
 The order is significant -- the todo items will be listed in the
 same order.")
@@ -131,7 +131,8 @@ New:
 		     ""
 		   "⬇️"))
 	 ("Status" (cadr (assoc (plist-get item :status) anddo-statuses)))
-	 ("Item" (plist-get item :subject)))))))
+	 ("Item" (plist-get item :subject))))))
+  (setq-local global-mode-string (anddo--mode-line)))
 
 (defvar-keymap anddo-mode-map
   "n" #'anddo-new-item
@@ -151,7 +152,22 @@ New:
 
 (define-derived-mode anddo-mode special-mode "anddo"
   "Major mode for listing todo lists."
-  (setq truncate-lines t))
+  (setq truncate-lines t)
+  (setq-local global-mode-string (anddo--mode-line)))
+
+(defun anddo--mode-line ()
+  (if (not anddo--db)
+      ""
+    (string-join
+     (cl-loop for (status name show) in anddo-statuses
+	      when show
+	      collect (format
+		       "%s:%s" name
+		       (caar
+			(sqlite-select
+			 anddo--db "select count(*) from item where status = ?"
+			 (list status)))))
+     " ")))
 
 (defun anddo-toggle-listing-mode ()
   "Cycle through three listing modes: New-only, non-closed, all."
@@ -222,7 +238,8 @@ New:
     (when (y-or-n-p "Really delete?")
       (sqlite-execute
        anddo--db "delete from item where id = ?" (list (plist-get item :id)))
-      (vtable-remove-object (vtable-current-table) item))))
+      (vtable-remove-object (vtable-current-table) item)
+      (setq-local global-mode-string (anddo--mode-line)))))
 
 (defun anddo-change-status ()
   "Change the status of the item under point."
@@ -236,7 +253,8 @@ New:
        "update item set status = ?, modification_time = ? where id = ?"
        (list new-status (format-time-string "%F %T") (plist-get item :id)))
       (plist-put item :status new-status)
-      (vtable-update-object (vtable-current-table) item item))))
+      (vtable-update-object (vtable-current-table) item item)
+      (setq-local global-mode-string (anddo--mode-line)))))
 
 (provide 'anddo)
 
