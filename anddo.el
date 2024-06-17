@@ -72,6 +72,14 @@ New:
 	  (setq body (concat body (match-string 1)))))
 	(forward-line 1)))))
 
+(defun anddo--rank (item)
+  (pcase (plist-get item :status)
+    ("new" 1)
+    ("in-progress" 2)
+    ("possibly" 3)
+    ("not-doing" 4)
+    ("done" 5)))
+
 (defun anddo ()
   "Display the todo list."
   (interactive)
@@ -81,16 +89,19 @@ New:
     (anddo-mode)
     (make-vtable
      :columns '("More" "Status" "Item")
-     :objects (sqorm-select-where
-	       (format
-		"select * from item %s order by id"
-		(cond
-		 ((eq anddo-listing-mode 'new)
-		  "where status = 'new'")
-		 ((eq anddo-listing-mode 'all)
-		  "")
-		 (t
-		  "where status in ('new', 'possibly', 'in-progress')"))))
+     :objects (sort
+	       (sqorm-select-where
+		(format
+		 "select * from item %s order by id desc"
+		 (cond
+		  ((eq anddo-listing-mode 'new)
+		   "where status = 'new'")
+		  ((eq anddo-listing-mode 'all)
+		   "")
+		  (t
+		   "where status in ('new', 'possibly', 'in-progress')"))))
+	       (lambda (i1 i2)
+		 (< (anddo--rank i1) (anddo--rank i2))))
      :getter
      (lambda (item column vtable)
        (pcase (vtable-column vtable column)
@@ -108,23 +119,28 @@ New:
 
 (defvar-keymap anddo-mode-map
   "n" #'anddo-new-item
+  "e" #'anddo-edit-item
   "l" #'anddo-toggle-listing-mode
   "<RET>" #'anddo-show-body
   "<DEL>" #'anddo-delete-item)
 
 (define-derived-mode anddo-mode special-mode "anddo"
   "Major mode for listing todo lists."
-  (setq truncate-lines t))
+  (setq truncate-lines t)
+  (make-local-variable 'sqorm-db))
 
 (defun anddo-toggle-listing-mode ()
   "Cycle through three listing modes: New-only, non-closed, all."
   (interactive)
+  (setq anddo-listing-mode
+	(cl-case anddo-listing-mode
+	  (new 'more)
+	  (more 'all)
+	  (all 'new)))
+  (anddo--regenerate))
+
+(defun anddo--regenerate ()
   (let ((id (plist-get (vtable-current-object) :id)))
-    (setq anddo-listing-mode
-	  (cl-case anddo-listing-mode
-	    ('new 'more)
-	    ('more 'all)
-	    ('all 'new)))
     (anddo)
     (when id
       (when-let ((match (text-property-search-forward
@@ -139,6 +155,50 @@ New:
     (if (zerop (length body))
 	(user-error "No body for the current item")
       (message "%s" body))))
+
+(defun anddo-new-item ()
+  "Add a new todo item."
+  (interactive)
+  (let ((lines (string-lines (read-string-from-buffer "Enter a todo item" ""))))
+    (sqorm-insert (list :_type 'item
+			:status "new"
+			:subject (pop lines)
+			:body (string-join lines "\n")
+			:entry-time (format-time-string "%F %T")))
+    (anddo--regenerate)))
+
+(defun anddo-edit-item ()
+  "Edit the item under point."
+  (interactive)
+  (let ((item (vtable-current-object)))
+    (unless item
+      (user-error "No item under point"))
+    (let ((lines (string-lines (read-string-from-buffer
+				"Edit the todo item"
+				(string-join
+				 (list (plist-get item :subject)
+				       (plist-get item :body))
+				 "\n"))))
+	  subject body)
+      (sqorm-exec
+       "update item set subject = ?, body = ? where id = ?"
+       (list (setq subject (pop lines))
+	     (setq body (string-join lines "\n"))
+	     (plist-get item :id)))
+      (plist-put item :subject subject)
+      (plist-put item :body body)
+      (vtable-update-object (vtable-current-table) item item))))
+
+(defun anddo-delete-item ()
+  "Delete the item under point."
+  (interactive)
+  (let ((item (vtable-current-object)))
+    (unless item
+      (user-error "No item under point"))
+    (when (y-or-n-p "Really delete?")
+      (sqorm-exec (format "delete from item where id = %d" (plist-get item :id))
+		  nil)
+      (vtable-remove-object (vtable-current-table) item))))
 
 (provide 'anddo)
 
