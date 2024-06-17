@@ -48,7 +48,7 @@ same order.")
   (unless anddo--db
     (setq-local anddo--db
 		(sqlite-open
-		 (expand-file-name "anddo.sqlite3" user-emacs-directory)))
+		 (expand-file-name "anddo.sqlite" user-emacs-directory)))
     (sqlite-execute anddo--db "create table if not exists item (id integer primary key, status text, subject text, body text, entry_time text, modification_time text)")))
 
 (defun anddo--insert (status subject body)
