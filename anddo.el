@@ -62,7 +62,7 @@ New:
 * Foo bar
   Something here
 * Zot"
-  (interactive "fFile to import: ")
+  (interactive "fFile to import: " nil anddo-mode)
   (with-temp-buffer
     (insert-file-contents file)
     (let ((status nil)
