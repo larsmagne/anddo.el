@@ -120,6 +120,7 @@ New:
 (defvar-keymap anddo-mode-map
   "n" #'anddo-new-item
   "e" #'anddo-edit-item
+  "s" #'anddo-change-status
   "l" #'anddo-toggle-listing-mode
   "<RET>" #'anddo-show-body
   "<DEL>" #'anddo-delete-item)
@@ -159,13 +160,16 @@ New:
 (defun anddo-new-item ()
   "Add a new todo item."
   (interactive)
-  (let ((lines (string-lines (read-string-from-buffer "Enter a todo item" ""))))
-    (sqorm-insert (list :_type 'item
-			:status "new"
-			:subject (pop lines)
-			:body (string-join lines "\n")
-			:entry-time (format-time-string "%F %T")))
-    (anddo--regenerate)))
+  (let ((lines (string-lines
+		(string-trim
+		 (read-string-from-buffer "Enter a todo item" "")))))
+    (unless (equal lines '(""))
+      (sqorm-insert (list :_type 'item
+			  :status "new"
+			  :subject (pop lines)
+			  :body (string-join lines "\n")
+			  :entry-time (format-time-string "%F %T")))
+      (anddo--regenerate))))
 
 (defun anddo-edit-item ()
   "Edit the item under point."
@@ -199,6 +203,19 @@ New:
       (sqorm-exec (format "delete from item where id = %d" (plist-get item :id))
 		  nil)
       (vtable-remove-object (vtable-current-table) item))))
+
+(defun anddo-change-status ()
+  "Change the status of the item under point."
+  (interactive)
+  (let ((item (vtable-current-object)))
+    (unless item
+      (user-error "No item under point"))
+    (let ((new-status (completing-read "New status: " anddo-statuses nil t)))
+      (sqorm-exec
+       "update item set status = ? where id = ?"
+       (list new-status (plist-get item :id)))
+      (plist-put item :status new-status)
+      (vtable-update-object (vtable-current-table) item item))))
 
 (provide 'anddo)
 
