@@ -28,6 +28,9 @@ Possible values are `new', `all' and `most'.")
     ("not-doing" "⛔" nil)
     ("done" "☑️" t))
   "Alist of possible statuses and how they should be displayed.
+The third element says whether to display a count of the status
+in the mode line.
+
 The order is significant -- the todo items will be listed in the
 same order.")
 
