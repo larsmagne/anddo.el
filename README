@@ -5,3 +5,9 @@ this package:
 
   https://github.com/larsmagne/sqorm.el/
 
+Usage:
+
+  M-x anddo
+
+Then `C-h b' or look in the menus for commands -- they're pretty self
+explanatory.
