@@ -129,7 +129,7 @@ New:
        (pcase (vtable-column vtable column)
 	 ("More" (if (length= (plist-get item :body) 0)
 		     ""
-		   "⬇️"))
+		   "📁"))
 	 ("Status" (cadr (assoc (plist-get item :status) anddo-statuses)))
 	 ("Item" (plist-get item :subject))))))
   (setq-local global-mode-string (anddo--mode-line)))
