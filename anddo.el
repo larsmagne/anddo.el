@@ -15,26 +15,26 @@
 
 ;;; Code:
 
-(require 'sqorm)
 (require 'cl-lib)
 
 (defvar anddo-listing-mode 'new
   "Default listing mode for anddo.
 Possible values are `new', `all' and `most'.")
 
-(defconst anddo--tables
-  '((item
-     (id integer :primary)
-     (status text)
-     (subject text)
-     (body text)
-     (entry-time text)
-     (modification-time text))))
+(defvar anddo--db nil)
 
 (defun anddo--create-tables ()
-  (unless sqorm-db
-    (sqorm-open (expand-file-name "anddo.sqlite3" user-emacs-directory))
-    (sqorm-create-tables anddo--tables)))
+  (unless anddo--db
+    (setq-local anddo--db
+		(sqlite-open
+		 (expand-file-name "anddo2.sqlite3" user-emacs-directory)))
+    (sqlite-execute anddo--db "create table if not exists item (id integer primary key, status text, subject text, body text, entry_time text, modification_time text)")))
+
+(defun anddo--insert (status subject body)
+  (sqlite-execute
+   anddo--db
+   "insert into item(status, subject, body, entry_time) values(?, ?, ?, ?)"
+   (list status subject body (format-time-string "%F %T"))))
 
 (defun anddo-import-text-file (file)
   "Import a text file into anddo.
@@ -58,15 +58,7 @@ New:
 	      (looking-at "\n"))
 	  (let ((new-subject (match-string 1)))
 	    (when (and status subject)
-	      (sqorm-insert
-	       (sqorm-make
-		'item
-		(list nil (downcase status)
-		      subject
-		      body
-		      (format-time-string "%F %T")
-		      nil)
-		anddo--tables))
+	      (anddo--insert (downcase status) subject body)
 	      (setq body ""))
 	    (setq subject new-subject)))
 	 ((looking-at "  \\(.*\\)")
@@ -81,29 +73,48 @@ New:
     ("not-doing" 4)
     ("done" 5)))
 
+(defun anddo--transform-result (result)
+  (cl-loop with columns = (pop result)
+	   for row in result
+	   collect
+	   (cl-loop for column in columns
+		    for value in row
+		    append (list (intern (format ":%s" (replace-regexp-in-string
+							"_" "-" column)))
+				 value))))
+
 (defun anddo ()
   "Display the todo list."
   (interactive)
   (pop-to-buffer "*anddo*")
+  (let ((db anddo--db))
+    (anddo-mode)
+    (when db
+      (setq-local anddo-db db))
+    (anddo--create-tables)
+    (anddo--generate)))
+
+(defun anddo--generate ()
   (let ((inhibit-read-only t))
     (erase-buffer)
-    (anddo--create-tables)
-    (anddo-mode)
     (make-vtable
      :columns '((:name "More" :width 4)
 		(:name "Status" :width 4)
 		(:name "Item" :width 500))
      :objects (sort
-	       (sqorm-select-where
-		(format
-		 "select * from item %s order by id desc"
-		 (cond
-		  ((eq anddo-listing-mode 'new)
-		   "where status = 'new'")
-		  ((eq anddo-listing-mode 'all)
-		   "")
-		  (t
-		   "where status in ('new', 'possibly', 'in-progress')"))))
+	       (anddo--transform-result
+		(sqlite-select
+		 anddo--db
+		 (format
+		  "select * from item %s order by id desc"
+		  (cond
+		   ((eq anddo-listing-mode 'new)
+		    "where status = 'new'")
+		   ((eq anddo-listing-mode 'all)
+		    "")
+		   (t
+		    "where status in ('new', 'possibly', 'in-progress')")))
+		 nil 'full))
 	       (lambda (i1 i2)
 		 (< (anddo--rank i1) (anddo--rank i2))))
      :getter
@@ -142,8 +153,7 @@ New:
 
 (define-derived-mode anddo-mode special-mode "anddo"
   "Major mode for listing todo lists."
-  (setq truncate-lines t)
-  (make-local-variable 'sqorm-db))
+  (setq truncate-lines t))
 
 (defun anddo-toggle-listing-mode ()
   "Cycle through three listing modes: New-only, non-closed, all."
@@ -157,7 +167,7 @@ New:
 
 (defun anddo--regenerate ()
   (let ((id (plist-get (vtable-current-object) :id)))
-    (anddo)
+    (anddo--generate)
     (when id
       (when-let ((match (text-property-search-forward
 			 'vtable-object id (lambda (v item)
@@ -179,11 +189,7 @@ New:
 		(string-trim
 		 (read-string-from-buffer "Enter a todo item" "")))))
     (unless (equal lines '(""))
-      (sqorm-insert (list :_type 'item
-			  :status "new"
-			  :subject (pop lines)
-			  :body (string-join lines "\n")
-			  :entry-time (format-time-string "%F %T")))
+      (anddo--insert "new" (pop lines) (string-join lines "\n"))
       (anddo--regenerate))))
 
 (defun anddo-edit-item ()
@@ -199,7 +205,8 @@ New:
 				       (plist-get item :body))
 				 "\n"))))
 	  subject body)
-      (sqorm-exec
+      (sqlite-execute
+       anddo--db
        "update item set subject = ?, body = ? where id = ?"
        (list (setq subject (pop lines))
 	     (setq body (string-join lines "\n"))
@@ -215,8 +222,8 @@ New:
     (unless item
       (user-error "No item under point"))
     (when (y-or-n-p "Really delete?")
-      (sqorm-exec (format "delete from item where id = %d" (plist-get item :id))
-		  nil)
+      (sqlite-execute
+       anddo--db "delete from item where id = ?" (list (plist-get item :id)))
       (vtable-remove-object (vtable-current-table) item))))
 
 (defun anddo-change-status ()
@@ -226,11 +233,10 @@ New:
     (unless item
       (user-error "No item under point"))
     (let ((new-status (completing-read "New status: " anddo-statuses nil t)))
-      (sqorm-exec
+      (sqlite-execute
+       anddo--db
        "update item set status = ?, modification_time = ? where id = ?"
-       (list new-status
-	     (format-time-string "%F %T")
-	     (plist-get item :id)))
+       (list new-status (format-time-string "%F %T") (plist-get item :id)))
       (plist-put item :status new-status)
       (vtable-update-object (vtable-current-table) item item))))
 
