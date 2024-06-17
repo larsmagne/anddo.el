@@ -130,7 +130,14 @@ New:
   "s" #'anddo-change-status
   "l" #'anddo-toggle-listing-mode
   "<RET>" #'anddo-show-body
-  "<DEL>" #'anddo-delete-item)
+  "<DEL>" #'anddo-delete-item
+  :menu
+  '(["Add new todo item" anddo-new-item t]
+    ["Edit todo item" anddo-edit-item (vtable-current-object)]
+    ["Change status" anddo-change-status (vtable-current-object)]
+    ["Toggle listing mode" anddo-toggle-listing-mode t]
+    ["Show the body of the item" anddo-show-body (vtable-current-object)]
+    ["Delete todo item" anddo-delete-item (vtable-current-object)]))
 
 (define-derived-mode anddo-mode special-mode "anddo"
   "Major mode for listing todo lists."
@@ -219,8 +226,10 @@ New:
       (user-error "No item under point"))
     (let ((new-status (completing-read "New status: " anddo-statuses nil t)))
       (sqorm-exec
-       "update item set status = ? where id = ?"
-       (list new-status (plist-get item :id)))
+       "update item set status = ?, modification_time = ? where id = ?"
+       (list new-status
+	     (format-time-string "%F %T")
+	     (plist-get item :id)))
       (plist-put item :status new-status)
       (vtable-update-object (vtable-current-table) item item))))
 
