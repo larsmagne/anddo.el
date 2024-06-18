@@ -208,7 +208,16 @@ New:
 		 (read-string-from-buffer "Enter a todo item" "")))))
     (unless (equal lines '(""))
       (anddo--insert "new" (pop lines) (string-join lines "\n"))
-      (anddo--regenerate))))
+      (let ((item (car
+		   (anddo--transform-result
+		    (sqlite-select
+		     anddo--db
+		     "select * from item where id in (select max(id) from item)"
+		     nil 'full)))))
+	(goto-char (point-min))
+	(vtable-insert-object (vtable-current-table) item
+			      (vtable-current-object))
+	(setq-local global-mode-string (anddo--mode-line))))))
 
 (defun anddo-edit-item ()
   "Edit the item under point."
