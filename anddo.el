@@ -35,6 +35,9 @@ in the mode line.
 The order is significant -- the todo items will be listed in the
 same order.")
 
+(defvar anddo-file (expand-file-name "anddo.sqlite" user-emacs-directory)
+  "The file name of the anddo sqlite file.")
+
 (defvar anddo--db nil)
 
 (defun anddo ()
@@ -50,9 +53,7 @@ same order.")
 
 (defun anddo--create-tables ()
   (unless anddo--db
-    (setq-local anddo--db
-		(sqlite-open
-		 (expand-file-name "anddo.sqlite" user-emacs-directory)))
+    (setq-local anddo--db (sqlite-open anddo-file))
     (sqlite-execute anddo--db "create table if not exists item (id integer primary key, status text, subject text, body text, entry_time text, modification_time text)")))
 
 (defun anddo--insert (status subject body)
