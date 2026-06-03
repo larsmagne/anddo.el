@@ -219,8 +219,10 @@ New:
 		     "select * from item where id in (select max(id) from item)"
 		     nil 'full)))))
 	(goto-char (point-min))
-	(vtable-insert-object (vtable-current-table) item
-			      (vtable-current-object))
+	(if (vtable-current-table)
+	    (vtable-insert-object (vtable-current-table) item
+				  (vtable-current-object))
+	  (anddo--generate))
 	(anddo--update-mode-line)))))
 
 (defun anddo-edit-item ()
