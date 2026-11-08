@@ -23,7 +23,7 @@
 Possible values are `new', `all' and `most'.")
 
 (defvar anddo-statuses
-  '(("new" "⚡" t)
+  '(("new" "🟡" t)
     ("in-progress" "🛠️" t)
     ("possibly" "❓" nil)
     ("not-doing" "⛔" nil)
