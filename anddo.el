@@ -18,9 +18,10 @@
 (require 'cl-lib)
 (require 'vtable)
 
-(defvar anddo-listing-mode 'new
+(defvar anddo-listing-mode 'most
   "Default listing mode for anddo.
-Possible values are `new', `all' and `most'.")
+Possible values are `new', `all' and `most'.
+`most' means list all except \"done\" and \"not-doing\"o items.")
 
 (defvar anddo-statuses
   '(("new" "🟡" t)
@@ -182,8 +183,8 @@ New:
   (interactive nil anddo-mode)
   (setq anddo-listing-mode
 	(cl-case anddo-listing-mode
-	  (new 'more)
-	  (more 'all)
+	  (new 'most)
+	  (most 'all)
 	  (all 'new)))
   (anddo--regenerate))
 
